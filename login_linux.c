@@ -19,7 +19,9 @@
 #define LENGTH 16
 
 void sighandler() {
-	// signal(SIGINT,SIG_IGN);
+	signal(SIGINT,SIG_IGN);
+	signal(SIGKILL,SIG_IGN);
+	signal(SIGTSTP,SIG_IGN);
 
 	/* add signalhandling routines here */
 	/* see 'man 2 signal' */
@@ -51,28 +53,57 @@ int main(int argc, char *argv[]) {
 
 		if (fgets(user,16,stdin) == NULL) /* gets() is vulnerable to buffer */
 			exit(0); /*  overflow attacks.  */
-		// printf("username ->%s\n", user );
+
 		/* check to see if important variable is intact after input of login name - do not remove */
 		printf("Value of variable 'important' after input of login name: %*.*s\n",
 				LENGTH - 1, LENGTH - 1, important);
-
+		user[strlen(user)-1] = '\0';
 		user_pass = getpass(prompt);
 		passwddata = mygetpwnam(user);
 
-		if (passwddata != NULL) {
+		if (passwddata != NULL && user_pass != NULL) {
+			char *encrypted_pass = crypt(user_pass,passwddata->passwd_salt);
 			/* You have to encrypt user_pass for this to work */
 			/* Don't forget to include the salt */
 
-			if (!strcmp(user_pass, passwddata->passwd)) {
+			if (!strcmp(encrypted_pass, passwddata->passwd)) {
 
-				printf(" You're in !\n");
+				printf("********Welcome %s !\n",user);
+				passwddata->pwage++;
+				printf("********Number of failed attempts: %d\n",passwddata->pwfailed);
+				passwddata->pwfailed=0;
+				mysetpwent(user,passwddata);
+				if(passwddata->pwage > 10){
+					printf("********You use your password more than 10 times, please change your password\n");
+				}
+				if(setuid(passwddata->uid) == -1){
+					exit(0);
+				}
+				char *argvv[] = {"/bin/sh",NULL};
+				char *envpp[] = {NULL};
+
+				if(execve("/bin/sh", argvv , envpp) == -1)
+					exit(0);
 
 				/*  check UID, see setuid(2) */
 				/*  start a shell, use execve(2) */
 
+			}else{
+				if(passwddata-> pwfailed == 3){
+					printf("********Too many fail attempts! Try again later. \n");
+					passwddata->pwfailed = 0;
+					mysetpwent(user,passwddata);
+					exit(0);
+				}else{
+					passwddata-> pwfailed++;
+					mysetpwent(user,passwddata);
+					printf("********Incorrect username or password, Try again \n");
+				}
+
 			}
+		}else{
+			printf("********Login Incorrect \n");
 		}
-		printf("Login Incorrect \n");
 	}
 	return 0;
 }

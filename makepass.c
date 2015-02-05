@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
 	char clear1[9];
 	char *clear2;
 
+
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s salt\n", argv[0]);
 		return 1;
