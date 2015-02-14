@@ -11,7 +11,6 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <crypt.h>
-/* Uncomment next line in step 2 */
 #include "pwent.h"
 
 #define TRUE 1
@@ -22,21 +21,15 @@ void sighandler() {
 	signal(SIGINT,SIG_IGN);
 	signal(SIGKILL,SIG_IGN);
 	signal(SIGTSTP,SIG_IGN);
-
-	/* add signalhandling routines here */
-	/* see 'man 2 signal' */
 }
 
 int main(int argc, char *argv[]) {
 
-	//struct passwd *passwddata; /* this has to be redefined in step 2 */
 	mypwent *passwddata;
-	/* see pwent.h */
 
 	char important[LENGTH] = "***IMPORTANT***";
 
 	char user[LENGTH];
-	//char   *c_pass; //you might want to use this variable later...
 	char prompt[] = "password: ";
 	char *user_pass;
 
@@ -63,8 +56,10 @@ int main(int argc, char *argv[]) {
 
 		if (passwddata != NULL && user_pass != NULL) {
 			char *encrypted_pass = crypt(user_pass,passwddata->passwd_salt);
-			/* You have to encrypt user_pass for this to work */
-			/* Don't forget to include the salt */
+			if(encrypted_pass == NULL){
+				printf("Unsuccessful encryption \n");
+				exit(0);
+			}
 
 			if (!strcmp(encrypted_pass, passwddata->passwd)) {
 
@@ -72,7 +67,10 @@ int main(int argc, char *argv[]) {
 				passwddata->pwage++;
 				printf("********Number of failed attempts: %d\n",passwddata->pwfailed);
 				passwddata->pwfailed=0;
-				mysetpwent(user,passwddata);
+				if(mysetpwent(user,passwddata) == -1){
+					printf("Something went wrong\n");
+					exit(0);
+				}
 				if(passwddata->pwage > 10){
 					printf("********You use your password more than 10 times, please change your password\n");
 				}
@@ -85,18 +83,21 @@ int main(int argc, char *argv[]) {
 				if(execve("/bin/sh", argvv , envpp) == -1)
 					exit(0);
 
-				/*  check UID, see setuid(2) */
-				/*  start a shell, use execve(2) */
-
 			}else{
 				if(passwddata-> pwfailed == 3){
 					printf("********Too many fail attempts! Try again later. \n");
 					passwddata->pwfailed = 0;
-					mysetpwent(user,passwddata);
+					if(mysetpwent(user,passwddata) == -1){
+						printf("Something went wrong\n");
+						exit(0);
+					}
 					exit(0);
 				}else{
 					passwddata-> pwfailed++;
-					mysetpwent(user,passwddata);
+					if(mysetpwent(user,passwddata) == -1){
+						printf("Something went wrong\n");
+						exit(0);
+					}
 					printf("********Incorrect username or password, Try again \n");
 				}
 
@@ -107,4 +108,3 @@ int main(int argc, char *argv[]) {
 	}
 	return 0;
 }
-
